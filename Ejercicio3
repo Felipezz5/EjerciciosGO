@@ -1,0 +1,75 @@
+package main
+
+import (
+    "fmt"
+    "sort"
+    "sync"
+    "time"
+)
+
+type Tarea struct {
+    id        int
+    prioridad int
+    duracion  time.Duration
+}
+
+func ejecutarTarea(t Tarea, resultados chan<- string) {
+    fmt.Printf("Iniciando tarea %d (prioridad %d)\n", t.id, t.prioridad)
+    time.Sleep(t.duracion)
+    resultados <- fmt.Sprintf("Tarea %d completada (prioridad %d, duración %v)", 
+        t.id, t.prioridad, t.duracion)
+}
+
+func main() {
+    var wg sync.WaitGroup
+    
+    // Definir tareas con diferentes prioridades
+    tareas := []Tarea{
+        {id: 1, prioridad: 2, duracion: 2 * time.Second},
+        {id: 2, prioridad: 1, duracion: 1 * time.Second},
+        {id: 3, prioridad: 3, duracion: 3 * time.Second},
+        {id: 4, prioridad: 1, duracion: 1 * time.Second},
+        {id: 5, prioridad: 2, duracion: 2 * time.Second},
+    }
+    
+    // Ordenar tareas por prioridad (1 = alta, 3 = baja)
+    sort.Slice(tareas, func(i, j int) bool {
+        return tareas[i].prioridad < tareas[j].prioridad
+    })
+    
+    canalTareas := make(chan Tarea, len(tareas))
+    resultados := make(chan string, len(tareas))
+    
+    // Lanzar workers (3 workers concurrentes)
+    numWorkers := 3
+    for i := 0; i < numWorkers; i++ {
+        wg.Add(1)
+        go func(workerID int) {
+            defer wg.Done()
+            for tarea := range canalTareas {
+                ejecutarTarea(tarea, resultados)
+            }
+        }(i)
+    }
+    
+    // Goroutine planificadora: envía tareas ordenadas por prioridad
+    go func() {
+        for _, tarea := range tareas {
+            canalTareas <- tarea
+        }
+        close(canalTareas)
+    }()
+    
+    // Goroutine para mostrar resultados
+    go func() {
+        wg.Wait()
+        close(resultados)
+    }()
+    
+    // Mostrar resultados conforme llegan
+    for resultado := range resultados {
+        fmt.Println(resultado)
+    }
+    
+    fmt.Println("\nTodas las tareas han sido completadas.")
+}
