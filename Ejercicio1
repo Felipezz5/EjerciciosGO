@@ -1,0 +1,45 @@
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+func imprimirNumeros(wg *sync.WaitGroup) {
+    defer wg.Done()
+    for i := 1; i <= 5; i++ {
+        fmt.Printf("Número: %d\n", i)
+        time.Sleep(100 * time.Millisecond)
+    }
+}
+
+func imprimirLetras(wg *sync.WaitGroup) {
+    defer wg.Done()
+    letras := []string{"A", "B", "C", "D", "E"}
+    for _, letra := range letras {
+        fmt.Printf("Letra: %s\n", letra)
+        time.Sleep(100 * time.Millisecond)
+    }
+}
+
+func mostrarEstado(wg *sync.WaitGroup) {
+    defer wg.Done()
+    for i := 0; i < 5; i++ {
+        fmt.Println("Procesando...")
+        time.Sleep(1 * time.Second)
+    }
+}
+
+func main() {
+    var wg sync.WaitGroup
+    
+    wg.Add(3) // Tres goroutines a esperar
+    
+    go imprimirNumeros(&wg)
+    go imprimirLetras(&wg)
+    go mostrarEstado(&wg)
+    
+    wg.Wait() // Espera a que todas terminen
+    fmt.Println("Todas las tareas completadas")
+}
